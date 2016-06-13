@@ -19,4 +19,17 @@
       <Filter>File di origine</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="resource.h">
+      <Filter>File di intestazione</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Xml Include="haarcascade_eye.xml">
+      <Filter>File di risorse</Filter>
+    </Xml>
+    <Xml Include="haarcascade_frontalface_alt2.xml">
+      <Filter>File di risorse</Filter>
+    </Xml>
+  </ItemGroup>
 </Project>

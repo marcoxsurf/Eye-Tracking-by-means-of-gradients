@@ -1,5 +1,6 @@
 #include <iostream>
 #include <opencv2\opencv.hpp>
+#include <string>
 
 using namespace cv;
 using namespace std;
@@ -8,17 +9,31 @@ CascadeClassifier face_cascade;
 CascadeClassifier eye_cascade;
 
 int main(int argc, char** argv) {
-	face_cascade.load("haarcascade_frontalface_alt2.xml");
-	eye_cascade.load("haarcascade_eye.xml");
+	string face_file,eye_file;
+	int camera=0;
+	face_file = "haarcascade_frontalface_alt2.xml";
+	eye_file = "haarcascade_eye.xml";
+	face_cascade.load(face_file);
+	eye_cascade.load(eye_file);
 
 	// Open webcam
-	VideoCapture cap(0);
+	VideoCapture cap(camera);
 	// Check if everything is ok
-	if (face_cascade.empty() || eye_cascade.empty() || !cap.isOpened())
+	if (face_cascade.empty()) {
+		printf("Errore con il file: %s", face_file);
 		return 1;
+	}
+	if (eye_cascade.empty()) {
+		printf("Errore con il file: %s", eye_file);
+		return 1;
+	}
+	if (!cap.isOpened()) {
+		printf("Errore con la webcam: %d", camera);
+		return 1;
+	}
 
-	cap.set(CV_CAP_PROP_FRAME_WIDTH, 640);
-	cap.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
+	//cap.set(CV_CAP_PROP_FRAME_WIDTH, 640);
+	//cap.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
 
 	Mat frame, eye_tpl;
 	Rect eye_bb;
