@@ -1,21 +1,31 @@
 #include <iostream>
 #include <opencv2\opencv.hpp>
 #include <string>
+#include <time.h>
+#include <sstream>
 
 using namespace cv;
 using namespace std;
 
 CascadeClassifier face_cascade;
 CascadeClassifier eye_cascade;
+/*
+	Funzione per aggiungere la stringa FPS: al frame in output
+	@msec misura il tempo in sec tra un frame e l'altro
+*/
+Mat	addFPStoFrame(Mat frame, double durata);
 
 int main(int argc, char** argv) {
-	string face_file,eye_file;
+	char *face_file= "haarcascade_frontalface_alt2.xml", *eye_file = "haarcascade_eye.xml";
 	int camera=0;
-	face_file = "haarcascade_frontalface_alt2.xml";
-	eye_file = "haarcascade_eye.xml";
+	// Start and end times
+//	time_t start, end;
+	double a;
+	double f=getTickFrequency();
+
 	face_cascade.load(face_file);
 	eye_cascade.load(eye_file);
-
+	
 	// Open webcam
 	VideoCapture cap(camera);
 	// Check if everything is ok
@@ -32,14 +42,18 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	//cap.set(CV_CAP_PROP_FRAME_WIDTH, 640);
-	//cap.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
+	cap.set(CV_CAP_PROP_FRAME_WIDTH, 640);
+	cap.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
 
 	Mat frame, eye_tpl;
 	Rect eye_bb;
 	namedWindow("face", 1);
 	//namedWindow("l_eye", 1); namedWindow("r_eye", 1);
 	while (waitKey(15) != 'q') {
+		// Start time
+		//time(&start);
+		a = getTickCount();
+
 		cap >> frame;
 		if (frame.empty())
 			break;
@@ -68,6 +82,7 @@ int main(int argc, char** argv) {
 			//eye centers are always contained within 2 regions starting from
 			//20%x30% (left eye), and 60%x30% (right eye) of the face region
 			//with dimensions of 25%x20% of the latter
+
 
 			//eye_cascade
 			eye_cascade.detectMultiScale(faceROI, eyes, 1.1, 5
@@ -111,7 +126,28 @@ int main(int argc, char** argv) {
 			Mat rEye = face(r_eye);
 			imshow("l_eye", lEye); imshow("r_eye", rEye);*/
 		}
+		//Calcolo tempo per un frame
+		// End Time
+		a = getTickCount()-a;
+		a /= f;
+		// 1 frm in a msec, quanti frame al secondo?
+		// 1f : a = x : 1
+		// x = 1f*1/a		
+		frame = addFPStoFrame(frame, a);
 		imshow("face", frame);
 	}
+	cap.release();
 	return 0;
+}
+
+Mat	addFPStoFrame(Mat frame, double durata) {
+	ostringstream strs;
+	double nframe = floor((1 / durata)*100.0) / 100.0;
+	strs << nframe;
+	string fps = "FPS: " + strs.str();
+	Size textsize = getTextSize(fps, FONT_HERSHEY_COMPLEX, 1, 3, 0);
+	Point org((640 - textsize.width), (480 - textsize.height) );
+	int lineType = 8;
+	putText(frame, fps, org, FONT_HERSHEY_COMPLEX, 1, Scalar(255, 0, 0), 3, lineType);
+	return frame;
 }
