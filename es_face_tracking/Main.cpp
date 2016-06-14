@@ -89,16 +89,16 @@ void detectFace(cv::Mat frame) {
 	cvtColor(frame, gray, CV_BGR2GRAY);
 	equalizeHist(gray, gray);
 
-	face_cascade.detectMultiScale(gray, faces, 1.1, 2,
+	/*face_cascade.detectMultiScale(gray, faces, 1.1, 2,
 		0 | CV_HAAR_SCALE_IMAGE | CV_HAAR_FIND_BIGGEST_OBJECT,
-		cv::Size(150, 150));
+		cv::Size(150, 150));*/
 	//face_cascade.detectMultiScale(gray, faces, 1.3, 5);
 	//face_cascade.detectMultiScale(gray, faces, 1.1, 3, CV_HAAR_FIND_BIGGEST_OBJECT, Size(100, 100), Size(200, 200));
-	/*
+	
 	face_cascade.detectMultiScale(gray, faces, 1.1, 10,
 	CV_HAAR_SCALE_IMAGE | CV_HAAR_DO_CANNY_PRUNING
 	, cvSize(100, 100), cvSize(300, 300));
-	*/
+	
 
 	// Draw rect on the detected faces
 	for (int i = 0; i < faces.size(); i++) {
@@ -110,6 +110,7 @@ void detectFace(cv::Mat frame) {
 		//eye centers are always contained within 2 regions starting from
 		//20%x30% (left eye), and 60%x30% (right eye) of the face region
 		//with dimensions of 25%x20% of the latter
+		
 
 		//eye_cascade
 		eye_cascade.detectMultiScale(faceROI, eyes, 1.1, 5
