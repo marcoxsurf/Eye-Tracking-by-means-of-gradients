@@ -3,7 +3,7 @@
 #include <string>
 #include <time.h>
 
-
+#include "kf_eye.h"
 #include "utils.h"
 
 using namespace cv;
@@ -17,11 +17,16 @@ std::string main_wnd_name = "Face & Eye Detection";
 
 void detectFace(cv::Mat frame);
 
+KF leftEye, rightEye;
+
 
 int main(int argc, char** argv) {
 	char *face_file= "haarcascade_frontalface_alt2.xml", *eye_file = "haarcascade_eye.xml";
 	int camera=0;
-	
+	//init KF for eyes
+	leftEye = KF();
+	rightEye = KF();
+
 	double elapsed_time, elapsed_tick;
 	double freq=getTickFrequency();
 
@@ -50,14 +55,39 @@ int main(int argc, char** argv) {
 	Mat eye_tpl;
 	Rect eye_bb;
 	namedWindow(main_wnd_name, 1);
+
+	double ticks = 0;
+	leftEye.setFound(false);
+	leftEye.resetNotFoundCount();
+	rightEye.setFound(false);
+	rightEye.resetNotFoundCount();
+
 	while (waitKey(15) != 'q') {
 		// Start time
 		//time(&start);
-		elapsed_tick = (double) getTickCount();
+		elapsed_tick = (double) getTickCount();	///per calcolo fps
+		
+		//calcolo dt
+		double precTick = ticks;
+		ticks = (double)cv::getTickCount();
+		
+		double dT = (ticks - precTick) / cv::getTickFrequency(); //seconds
 
 		cap >> frame;
 		if (frame.empty())
-			continue;
+			break;
+
+		if (leftEye.getFound()) {
+			leftEye.setDT(dT);
+			circle(frame, leftEye.getCenter(), 2, CV_RGB(100, 100, 100), -1); //?-1
+			rectangle(frame, leftEye.getPredRect(), CV_RGB(100, 100, 100), 2);
+		}
+		if (rightEye.getFound()) {
+			rightEye.setDT(dT);
+			circle(frame, rightEye.getCenter(), 2, CV_RGB(100, 100, 100), -1); //?-1
+			rectangle(frame, rightEye.getPredRect(), CV_RGB(100, 100, 100), 2);
+		}
+
 		// Flip the frame horizontally, Windows users might need this
 		flip(frame, frame, 1);
 
@@ -99,7 +129,8 @@ void detectFace(cv::Mat frame) {
 	CV_HAAR_SCALE_IMAGE | CV_HAAR_DO_CANNY_PRUNING
 	, cvSize(100, 100), cvSize(300, 300));
 	
-
+	//Problema se più facce
+	//caso semplice: 1 sola faccia
 	// Draw rect on the detected faces
 	for (int i = 0; i < faces.size(); i++) {
 		rectangle(frame, faces[i], Scalar(0, 255, 0), 2);
@@ -118,11 +149,71 @@ void detectFace(cv::Mat frame) {
 		eye_cascade.detectMultiScale(halfFaceROI, eyes, 1.1, 8
 			, 0 | CV_HAAR_SCALE_IMAGE | CV_HAAR_DO_CANNY_PRUNING
 			, cvSize(10, 10), cvSize(100, 100));
+		//>>>>>>>> Detection
+		switch (eyes.size()){
+		case 0:
+			leftEye.incNotFound();
+			rightEye.incNotFound();
+			break;
+		case 1:
+			//sx o dx?
+			if (eyes[0].x < faces[i].width / 2) {
+				//sx
+				leftEye.resetNotFoundCount();
+				//draw left eye
+				Rect eye(faces[i].x + eyes[0].x, faces[i].y + eyes[0].y, eyes[0].width, eyes[0].height);
+				rectangle(frame, eye, Scalar(0, 255, 0), 2);
+				leftEye.setMeas(eye);
+				rightEye.incNotFound();
+			} else {
+				rightEye.resetNotFoundCount();
+				//draw right eye
+				Rect eye(faces[i].x + eyes[0].x, faces[i].y + eyes[0].y, eyes[0].width, eyes[0].height);
+				rectangle(frame, eye, Scalar(0, 255, 0), 2);
+				rightEye.setMeas(eye);
+				leftEye.incNotFound();
+				}
+			break;
+		case 2:
+			for (int j = 0; j < eyes.size(); j++) {
+				//sx o dx?
+				if (eyes[j].x < faces[i].width / 2) {
+					//sx
+					leftEye.resetNotFoundCount();
+					//draw left eye
+					Rect eye(faces[i].x + eyes[j].x, faces[i].y + eyes[j].y, eyes[j].width, eyes[j].height);
+					rectangle(frame, eye, Scalar(0, 255, 0), 2);
+					leftEye.setMeas(eye);
+					
+				}
+				else {
+					rightEye.resetNotFoundCount();
+					//draw right eye
+					Rect eye(faces[i].x + eyes[j].x, faces[i].y + eyes[j].y, eyes[j].width, eyes[j].height);
+					rectangle(frame, eye, Scalar(0, 255, 0), 2);
+					rightEye.setMeas(eye);
+					
+				}
+			}
+			break;
+		default:
+			//TODO gestire più occhi??? 
+			break;
+		}
+		
+
+		//come discrimino dx e sx?
+		//idea, se x<metà faccia --> sx
+		// se x > metà faccia --> dx
+		
+		faces[i].width;
+
 		for (int j = 0; j < eyes.size(); j++) {
 			//effettuo traslazione dei punti per disagnare su frame
 			Rect eye(faces[i].x + eyes[j].x, faces[i].y + eyes[j].y, eyes[j].width, eyes[j].height);
 			rectangle(frame, eye, Scalar(255, 0, 0), 1);
 		}
+		//<<<<<<<< Detection
 	}
 }
 
