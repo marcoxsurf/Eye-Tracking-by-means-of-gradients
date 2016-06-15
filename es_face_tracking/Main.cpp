@@ -19,6 +19,9 @@ void detectFace(cv::Mat frame);
 
 KF leftEye, rightEye;
 
+bool showDetectedLines, recCam;
+int frame_width, frame_height;
+VideoWriter video;
 
 int main(int argc, char** argv) {
 	char *face_file= "haarcascade_frontalface_alt2.xml", *eye_file = "haarcascade_eye.xml";
@@ -26,6 +29,9 @@ int main(int argc, char** argv) {
 	//init KF for eyes
 	leftEye = KF();
 	rightEye = KF();
+
+	showDetectedLines = true;
+	recCam = false;
 
 	double elapsed_time, elapsed_tick;
 	double freq=getTickFrequency();
@@ -48,9 +54,10 @@ int main(int argc, char** argv) {
 		printf("Errore con la webcam: %d", camera);
 		return 1;
 	}
-
-	cap.set(CV_CAP_PROP_FRAME_WIDTH, 640);
-	cap.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
+	frame_width = cap.get(CV_CAP_PROP_FRAME_WIDTH);
+	frame_height = cap.get(CV_CAP_PROP_FRAME_HEIGHT);
+	//cap.set(CV_CAP_PROP_FRAME_WIDTH, 640);
+	//cap.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
 
 	Mat eye_tpl;
 	Rect eye_bb;
@@ -67,9 +74,33 @@ int main(int argc, char** argv) {
 		if ((char)c == 'q') {
 			break;
 		}
-		if ((char)c == 'f') {
+		switch (c) {
+		case 'f':
 			imwrite("frame.png", frame);
+			break;
+		case 's':
+			showDetectedLines = !showDetectedLines;
+			break;
+		case 'r':
+			recCam = !recCam;
+			if (recCam) {
+				printf("Starting rec\n");
+				video = VideoWriter("out.avi", CV_FOURCC('M', 'J', 'P', 'G'), 10, Size(frame_width, frame_height), true);
+				cout << "Frame Size = " << frame_width << "x" << frame_height << endl;
+				if (!video.isOpened()) {
+					printf("ERROR: Failed to write the video\n");
+					recCam = false;
+					break;
+				}
+				printf("Rec ON\n");
+			}
+			else {
+				video.release();
+				printf("Rec OFF\n");
+			}
+			break;
 		}
+
 		// Start time
 		//time(&start);
 		elapsed_tick = (double) getTickCount();	///per calcolo fps
@@ -110,6 +141,9 @@ int main(int argc, char** argv) {
 		// x = 1f*1/a		
 		frame = addFPStoFrame(frame, elapsed_time);
 		imshow(main_wnd_name, frame);
+		if (recCam) {
+			video.write(frame);
+		}
 	}
 	cap.release();
 	return 0;
@@ -138,7 +172,9 @@ void detectFace(cv::Mat frame) {
 	//caso semplice: 1 sola faccia
 	// Draw rect on the detected faces
 	for (int i = 0; i < faces.size(); i++) {
-		rectangle(frame, faces[i], Scalar(0, 255, 0), 2);
+		if (showDetectedLines) {
+			rectangle(frame, faces[i], Scalar(0, 255, 0), 2);
+		}
 		//potrei pensare di ridurre faces[i]
 		//invece di dare tutto la faccia, solo la fascia degli occhi
 		//TODO Reduce face region for eye catching
@@ -166,13 +202,17 @@ void detectFace(cv::Mat frame) {
 				//sx
 				//draw left eye
 				Rect eye(faces[i].x + eyes[0].x, faces[i].y + eyes[0].y, eyes[0].width, eyes[0].height);
-				rectangle(frame, eye, Scalar(0, 255, 0), 2);
+				if (showDetectedLines) {
+					rectangle(frame, eye, Scalar(0, 255, 0), 2);
+				}
 				leftEye.setMeas(eye);
 				rightEye.incNotFound();
 			} else {
 				//draw right eye
 				Rect eye(faces[i].x + eyes[0].x, faces[i].y + eyes[0].y, eyes[0].width, eyes[0].height);
-				rectangle(frame, eye, Scalar(0, 255, 0), 2);
+				if (showDetectedLines) {
+					rectangle(frame, eye, Scalar(0, 255, 0), 2);
+				}
 				rightEye.setMeas(eye);
 				leftEye.incNotFound();
 				}
@@ -185,7 +225,9 @@ void detectFace(cv::Mat frame) {
 					leftEye.resetNotFoundCount();
 					//draw left eye
 					Rect eye(faces[i].x + eyes[j].x, faces[i].y + eyes[j].y, eyes[j].width, eyes[j].height);
-					rectangle(frame, eye, Scalar(0, 255, 0), 2);
+					if (showDetectedLines) {
+						rectangle(frame, eye, Scalar(0, 255, 0), 2);
+					}
 					leftEye.setMeas(eye);
 					
 				}
@@ -193,7 +235,9 @@ void detectFace(cv::Mat frame) {
 					rightEye.resetNotFoundCount();
 					//draw right eye
 					Rect eye(faces[i].x + eyes[j].x, faces[i].y + eyes[j].y, eyes[j].width, eyes[j].height);
-					rectangle(frame, eye, Scalar(0, 255, 0), 2);
+					if (showDetectedLines) {
+						rectangle(frame, eye, Scalar(0, 255, 0), 2);
+					}
 					rightEye.setMeas(eye);
 					
 				}
@@ -204,18 +248,12 @@ void detectFace(cv::Mat frame) {
 			break;
 		}
 		
-
-		//come discrimino dx e sx?
-		//idea, se x<metà faccia --> sx
-		// se x > metà faccia --> dx
-		
-		faces[i].width;
-
+		/*
 		for (int j = 0; j < eyes.size(); j++) {
 			//effettuo traslazione dei punti per disagnare su frame
 			Rect eye(faces[i].x + eyes[j].x, faces[i].y + eyes[j].y, eyes[j].width, eyes[j].height);
 			rectangle(frame, eye, Scalar(255, 0, 0), 1);
-		}
+		}*/
 		//<<<<<<<< Detection
 	}
 }
