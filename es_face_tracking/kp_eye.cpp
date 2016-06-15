@@ -8,9 +8,9 @@ void KF::setVars() {
 	notFoundCount = 0;
 	kf = KalmanFilter(stateSize, measSize, contrSize, type);
 	// [x,y,v_x,v_y,w,h]
-	Mat state(stateSize, 1, type);
+	state = Mat(stateSize, 1, type);
 	// [z_x,z_y,z_w,z_h]
-	Mat meas(measSize, 1, type);
+	meas = Mat(measSize, 1, type);
 	initSMNMatrix();
 }
 

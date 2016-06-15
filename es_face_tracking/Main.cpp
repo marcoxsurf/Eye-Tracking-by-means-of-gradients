@@ -62,7 +62,14 @@ int main(int argc, char** argv) {
 	rightEye.setFound(false);
 	rightEye.resetNotFoundCount();
 
-	while (waitKey(15) != 'q') {
+	while (true) {
+		int c = waitKey(10);
+		if ((char)c == 'q') {
+			break;
+		}
+		if ((char)c == 'f') {
+			imwrite("frame.png", frame);
+		}
 		// Start time
 		//time(&start);
 		elapsed_tick = (double) getTickCount();	///per calcolo fps
@@ -79,13 +86,13 @@ int main(int argc, char** argv) {
 
 		if (leftEye.getFound()) {
 			leftEye.setDT(dT);
-			circle(frame, leftEye.getCenter(), 2, CV_RGB(100, 100, 100), -1); //?-1
-			rectangle(frame, leftEye.getPredRect(), CV_RGB(100, 100, 100), 2);
+			circle(frame, leftEye.getCenter(), 2, CV_RGB(255, 0, 0), 1); //?-1
+			rectangle(frame, leftEye.getPredRect(), CV_RGB(255, 0, 0), 2);
 		}
 		if (rightEye.getFound()) {
 			rightEye.setDT(dT);
-			circle(frame, rightEye.getCenter(), 2, CV_RGB(100, 100, 100), -1); //?-1
-			rectangle(frame, rightEye.getPredRect(), CV_RGB(100, 100, 100), 2);
+			circle(frame, rightEye.getCenter(), 2, CV_RGB(255, 0, 0), 1); //?-1
+			rectangle(frame, rightEye.getPredRect(), CV_RGB(255, 0, 0), 2);
 		}
 
 		// Flip the frame horizontally, Windows users might need this
