@@ -43,9 +43,6 @@
     <Xml Include="haarcascade_frontalface_alt2.xml">
       <Filter>File di risorse</Filter>
     </Xml>
-    <Xml Include="E:\opencv\opencv_3.1\build\etc\haarcascades\haarcascade_frontalface_alt2.xml">
-      <Filter>File di risorse</Filter>
-    </Xml>
     <Xml Include="E:\opencv\opencv_3.1\build\etc\haarcascades\haarcascade_lefteye_2splits.xml">
       <Filter>File di risorse</Filter>
     </Xml>

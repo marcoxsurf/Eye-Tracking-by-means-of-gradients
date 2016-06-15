@@ -176,7 +176,6 @@
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
-    <Xml Include="E:\opencv\opencv_3.1\build\etc\haarcascades\haarcascade_frontalface_alt2.xml" />
     <Xml Include="E:\opencv\opencv_3.1\build\etc\haarcascades\haarcascade_lefteye_2splits.xml" />
     <Xml Include="E:\opencv\opencv_3.1\build\etc\haarcascades\haarcascade_righteye_2splits.xml" />
     <Xml Include="haarcascade_eye.xml" />
