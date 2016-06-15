@@ -159,14 +159,12 @@ void detectFace(cv::Mat frame) {
 			//sx o dx?
 			if (eyes[0].x < faces[i].width / 2) {
 				//sx
-				leftEye.resetNotFoundCount();
 				//draw left eye
 				Rect eye(faces[i].x + eyes[0].x, faces[i].y + eyes[0].y, eyes[0].width, eyes[0].height);
 				rectangle(frame, eye, Scalar(0, 255, 0), 2);
 				leftEye.setMeas(eye);
 				rightEye.incNotFound();
 			} else {
-				rightEye.resetNotFoundCount();
 				//draw right eye
 				Rect eye(faces[i].x + eyes[0].x, faces[i].y + eyes[0].y, eyes[0].width, eyes[0].height);
 				rectangle(frame, eye, Scalar(0, 255, 0), 2);
