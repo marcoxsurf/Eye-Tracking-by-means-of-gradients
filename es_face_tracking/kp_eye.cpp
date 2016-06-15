@@ -77,7 +77,7 @@ void KF::initSMNMatrix() {
 
 void KF::incNotFound() {
 	notFoundCount++;
-	printf("notFoundCount: %d", notFoundCount);
+	//printf("notFoundCount: %d", notFoundCount);
 	if (notFoundCount >= 100) {
 		found = false;
 	}
@@ -99,14 +99,14 @@ void KF::setDT(double dt) {
 	kf.transitionMatrix.at<float>(2) = (float)dt;
 	kf.transitionMatrix.at<float>(9) = (float)dt;
 	// <<<< Matrix A
-	printf("dT: %f", dt);
+	//printf("dT: %f", dt);
 	//ad ogni step, predict
 	predict();
 }
 
 void KF::predict() {
 	state = kf.predict();
-	cout << "State post:" << endl << state << endl;
+	//cout << "State post:" << endl << state << endl;
 }
 
 Mat KF::getState() {
@@ -160,7 +160,7 @@ void KF::setMeas(Rect rect) {
 	else
 		kf.correct(meas); // Kalman Correction
 
-	cout << "Measure matrix:" << endl << meas << endl;
+	//cout << "Measure matrix:" << endl << meas << endl;
 }
 
 KF::~KF() {

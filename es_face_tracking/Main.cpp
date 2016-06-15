@@ -83,6 +83,8 @@ int main(int argc, char** argv) {
 		cap >> frame;
 		if (frame.empty())
 			break;
+		// Flip the frame horizontally, Windows users might need this
+		flip(frame, frame, 1);
 
 		if (leftEye.getFound()) {
 			leftEye.setDT(dT);
@@ -95,11 +97,7 @@ int main(int argc, char** argv) {
 			rectangle(frame, rightEye.getPredRect(), CV_RGB(255, 0, 0), 2);
 		}
 
-		// Flip the frame horizontally, Windows users might need this
-		flip(frame, frame, 1);
-
-		//Copy frame to image to display
-		frame.copyTo(frame);
+		
 
 		detectFace(frame);
 		
