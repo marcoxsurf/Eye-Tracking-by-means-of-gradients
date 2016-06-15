@@ -11,6 +11,8 @@ using namespace std;
 
 cv::CascadeClassifier face_cascade;
 cv::CascadeClassifier eye_cascade;
+cv::CascadeClassifier leftEyecascade;
+cv::CascadeClassifier rightEyecascade;
 
 cv::Mat frame;
 std::string main_wnd_name = "Face & Eye Detection";
@@ -25,6 +27,8 @@ VideoWriter video;
 
 int main(int argc, char** argv) {
 	char *face_file= "haarcascade_frontalface_alt2.xml", *eye_file = "haarcascade_eye.xml";
+	char *leftEye_file  = "haarcascade_lefteye_2splits.xml";
+	char *rightEye_file = "haarcascade_righteye_2splits.xml";
 	int camera=0;
 	//init KF for eyes
 	leftEye = KF();
@@ -38,6 +42,8 @@ int main(int argc, char** argv) {
 
 	face_cascade.load(face_file);
 	eye_cascade.load(eye_file);
+	leftEyecascade.load(leftEye_file);
+	rightEyecascade.load(rightEye_file);
 	
 	// Open webcam
 	VideoCapture cap(camera);
@@ -50,14 +56,20 @@ int main(int argc, char** argv) {
 		printf("Errore con il file: %s", eye_file);
 		return 1;
 	}
+	if (leftEyecascade.empty()) {
+		printf("Errore con il file: %s", leftEye_file);
+		return 1;
+	}
+	if (rightEyecascade.empty()) {
+		printf("Errore con il file: %s", rightEye_file);
+		return 1;
+	}
 	if (!cap.isOpened()) {
 		printf("Errore con la webcam: %d", camera);
 		return 1;
 	}
 	frame_width = cap.get(CV_CAP_PROP_FRAME_WIDTH);
 	frame_height = cap.get(CV_CAP_PROP_FRAME_HEIGHT);
-	//cap.set(CV_CAP_PROP_FRAME_WIDTH, 640);
-	//cap.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
 
 	Mat eye_tpl;
 	Rect eye_bb;
@@ -103,13 +115,13 @@ int main(int argc, char** argv) {
 
 		// Start time
 		//time(&start);
-		elapsed_tick = (double) getTickCount();	///per calcolo fps
+		elapsed_tick = (double) getTickCount();	//per calcolo fps
 		
 		//calcolo dt
 		double precTick = ticks;
 		ticks = (double)cv::getTickCount();
 		
-		double dT = (ticks - precTick) / cv::getTickFrequency(); //seconds
+		double dT = (ticks - precTick) / freq; //seconds
 
 		cap >> frame;
 		if (frame.empty())
@@ -127,8 +139,6 @@ int main(int argc, char** argv) {
 			circle(frame, rightEye.getCenter(), 2, CV_RGB(255, 0, 0), 1); //?-1
 			rectangle(frame, rightEye.getPredRect(), CV_RGB(255, 0, 0), 2);
 		}
-
-		
 
 		detectFace(frame);
 		
@@ -153,7 +163,7 @@ void detectFace(cv::Mat frame) {
 	// Convert to grayscale and 
 	// adjust the image contrast using histogram equalization
 	Mat gray;
-	vector<Rect> faces, eyes;
+	vector<Rect> faces, eyes,leye,reye;
 
 	cvtColor(frame, gray, CV_BGR2GRAY);
 	equalizeHist(gray, gray);
@@ -175,6 +185,7 @@ void detectFace(cv::Mat frame) {
 		if (showDetectedLines) {
 			rectangle(frame, faces[i], Scalar(0, 255, 0), 2);
 		}
+		Mat faceROI = gray(faces[i]);
 		//potrei pensare di ridurre faces[i]
 		//invece di dare tutto la faccia, solo la fascia degli occhi
 		//TODO Reduce face region for eye catching
@@ -187,6 +198,12 @@ void detectFace(cv::Mat frame) {
 		Mat halfFaceROI = gray(halfFace);
 		//here kalman's magic
 		//eye_cascade
+		leftEyecascade.detectMultiScale(faceROI, leye, 1.1, 10
+			, 0 | CV_HAAR_SCALE_IMAGE | CV_HAAR_DO_CANNY_PRUNING
+			, cvSize(10, 10), cvSize(100, 100));
+		rightEyecascade.detectMultiScale(faceROI, reye, 1.1, 10
+			, 0 | CV_HAAR_SCALE_IMAGE | CV_HAAR_DO_CANNY_PRUNING
+			, cvSize(10, 10), cvSize(100, 100));
 		eye_cascade.detectMultiScale(halfFaceROI, eyes, 1.1, 8
 			, 0 | CV_HAAR_SCALE_IMAGE | CV_HAAR_DO_CANNY_PRUNING
 			, cvSize(10, 10), cvSize(100, 100));
