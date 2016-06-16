@@ -198,13 +198,23 @@ void detectFace(cv::Mat frame) {
 		Mat halfFaceROI = gray(halfFace);
 		//here kalman's magic
 		//eye_cascade
-		leftEyecascade.detectMultiScale(faceROI, leye, 1.1, 10
+		leftEyecascade.detectMultiScale(faceROI, leye, 1.1, 5
 			, 0 | CV_HAAR_SCALE_IMAGE | CV_HAAR_DO_CANNY_PRUNING
 			, cvSize(10, 10), cvSize(100, 100));
-		rightEyecascade.detectMultiScale(faceROI, reye, 1.1, 10
+		for (int j = 0; j < leye.size(); j++) {
+			//effettuo traslazione dei punti per disagnare su frame
+			Rect eye(faces[i].x + leye[j].x, faces[i].y + leye[j].y, leye[j].width, leye[j].height);
+			rectangle(frame, eye, Scalar(255, 255, 0), 1);
+		}
+		rightEyecascade.detectMultiScale(faceROI, reye, 1.1, 5
 			, 0 | CV_HAAR_SCALE_IMAGE | CV_HAAR_DO_CANNY_PRUNING
 			, cvSize(10, 10), cvSize(100, 100));
-		eye_cascade.detectMultiScale(halfFaceROI, eyes, 1.1, 8
+		for (int j = 0; j < eyes.size(); j++) {
+			//effettuo traslazione dei punti per disagnare su frame
+			Rect eye(faces[i].x + reye[j].x, faces[i].y + reye[j].y, reye[j].width, reye[j].height);
+			rectangle(frame, eye, Scalar(255, 255, 0), 1);
+		}
+		eye_cascade.detectMultiScale(halfFaceROI, eyes, 1.1, 5
 			, 0 | CV_HAAR_SCALE_IMAGE | CV_HAAR_DO_CANNY_PRUNING
 			, cvSize(10, 10), cvSize(100, 100));
 		//>>>>>>>> Detection
