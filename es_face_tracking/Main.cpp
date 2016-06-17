@@ -116,16 +116,24 @@ int main(int argc, char** argv) {
 			break;
 		// Flip the frame horizontally, Windows users might need this
 		flip(frame, frame, 1);
+		Mat gray;
 
+		cvtColor(frame, gray, CV_BGR2GRAY);
+		equalizeHist(gray, gray);
+		//TODO controllo se box predetto è fuori frame 
 		if (leftEye.getFound()) {
 			leftEye.setDT(dT);
+			Rect le = leftEye.getPredRect();
 			circle(frame, leftEye.getCenter(), 2, CV_RGB(255, 0, 0), 1); //?-1
-			rectangle(frame, leftEye.getPredRect(), CV_RGB(255, 0, 0), 2);
+			rectangle(frame, le, CV_RGB(255, 0, 0), 2);
+			if (le.width>0 && le.height>0 )
+				Point leftPupil = findEyeCenter(gray, leftEye.getPredRect());
 		}
 		if (rightEye.getFound()) {
 			rightEye.setDT(dT);
 			circle(frame, rightEye.getCenter(), 2, CV_RGB(255, 0, 0), 1); //?-1
 			rectangle(frame, rightEye.getPredRect(), CV_RGB(255, 0, 0), 2);
+			//Point rightPupil = findEyeCenter(frame, rightEye.getPredRect());
 		}
 
 		detectFace(frame);
@@ -147,15 +155,11 @@ int main(int argc, char** argv) {
 	return 0;
 }
 
-void detectFace(Mat frame) {
+void detectFace(Mat gray) {
 	// Convert to grayscale and 
 	// adjust the image contrast using histogram equalization
-	Mat gray;
 	vector<Rect> faces, eyes,leye,reye;
-
-	cvtColor(frame, gray, CV_BGR2GRAY);
-	equalizeHist(gray, gray);
-
+	
 	/*face_cascade.detectMultiScale(gray, faces, 1.1, 2,
 		0 | CV_HAAR_SCALE_IMAGE | CV_HAAR_FIND_BIGGEST_OBJECT,
 		cv::Size(150, 150));*/
@@ -235,9 +239,6 @@ void detectFace(Mat frame) {
 						rectangle(frame, eye, Scalar(0, 255, 0), 2);
 					}
 					leftEye.setMeas(eye);
-					Mat leye = gray(eye);
-					
-					Point leftPupil = findEyeCenter(leye, eye);
 				}
 				else {
 					rightEye.resetNotFoundCount();
@@ -247,7 +248,6 @@ void detectFace(Mat frame) {
 						rectangle(frame, eye, Scalar(0, 255, 0), 2);
 					}
 					rightEye.setMeas(eye);
-					
 				}
 			}
 			break;

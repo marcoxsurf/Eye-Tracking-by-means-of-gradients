@@ -7,11 +7,12 @@
 using namespace cv;
 
 Point findEyeCenter(Mat face, Rect eye) {
-	Mat eyeROIUnscaled = face;
+	Mat eyeROIUnscaled = face(eye);
 	Mat eyeROI;
 	Mat gradientX, gradientY;
 	Mat mags;
-	scaleToFastSize(eyeROIUnscaled, eyeROI);
+	//scaleToFastSize(eyeROIUnscaled, eyeROI);
+	resize(eyeROIUnscaled, eyeROI, Size(kFastEyeWidth, kFastEyeWidth));
 	// draw eye region
 	rectangle(face, eye, 1234);
 	//-- Find the gradient
@@ -27,7 +28,13 @@ Point findEyeCenter(Mat face, Rect eye) {
 	//normalize
 	normalize(eyeROI, gradientX, gradientThresh);
 	normalize(eyeROI, gradientY, gradientThresh);
-	imshow("Eye", eyeROI);
+	
+	//-- Create a blurred and inverted image for weighting
+	Mat weight;
+	GaussianBlur(eyeROI, weight, Size(kWeightBlurSize, kWeightBlurSize), 0, 0);
+	weight = 255 - weight;
+	imshow("Eye", weight);
+
 	return Point(0, 0);
 }
 
