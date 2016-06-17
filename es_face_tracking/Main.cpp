@@ -3,23 +3,24 @@
 #include <string>
 #include <time.h>
 
-#include "kf_eye.h"
+#include "kf_est.h"
 #include "utils.h"
+#include "eye_op.h"
 
 using namespace cv;
 using namespace std;
 
-cv::CascadeClassifier face_cascade;
-cv::CascadeClassifier eye_cascade;
-cv::CascadeClassifier leftEyecascade;
-cv::CascadeClassifier rightEyecascade;
+CascadeClassifier face_cascade;
+CascadeClassifier eye_cascade;
 
-cv::Mat frame;
-std::string main_wnd_name = "Face & Eye Detection";
+Mat frame;
+string main_wnd_name = "Face & Eye Detection";
+string right_eye = "Right Eye";
+string left_eye = "Left Eye";
 
-void detectFace(cv::Mat frame);
-
-KF leftEye, rightEye;
+void detectFace(Mat frame);
+//TODO Sostituire KF con UKF per via del modello nonlineare dell'occhio
+KFE leftEye, rightEye;
 
 bool showDetectedLines, recCam;
 int frame_width, frame_height;
@@ -27,12 +28,10 @@ VideoWriter video;
 
 int main(int argc, char** argv) {
 	char *face_file= "haarcascade_frontalface_alt2.xml", *eye_file = "haarcascade_eye.xml";
-	char *leftEye_file  = "haarcascade_lefteye_2splits.xml";
-	char *rightEye_file = "haarcascade_righteye_2splits.xml";
 	int camera=0;
 	//init KF for eyes
-	leftEye = KF();
-	rightEye = KF();
+	leftEye = KFE();
+	rightEye = KFE();
 
 	showDetectedLines = true;
 	recCam = false;
@@ -42,8 +41,6 @@ int main(int argc, char** argv) {
 
 	face_cascade.load(face_file);
 	eye_cascade.load(eye_file);
-	leftEyecascade.load(leftEye_file);
-	rightEyecascade.load(rightEye_file);
 	
 	// Open webcam
 	VideoCapture cap(camera);
@@ -56,30 +53,17 @@ int main(int argc, char** argv) {
 		printf("Errore con il file: %s", eye_file);
 		return 1;
 	}
-	if (leftEyecascade.empty()) {
-		printf("Errore con il file: %s", leftEye_file);
-		return 1;
-	}
-	if (rightEyecascade.empty()) {
-		printf("Errore con il file: %s", rightEye_file);
-		return 1;
-	}
 	if (!cap.isOpened()) {
 		printf("Errore con la webcam: %d", camera);
 		return 1;
 	}
-	frame_width = cap.get(CV_CAP_PROP_FRAME_WIDTH);
-	frame_height = cap.get(CV_CAP_PROP_FRAME_HEIGHT);
+	frame_width = (int) cap.get(CV_CAP_PROP_FRAME_WIDTH);
+	frame_height = (int) cap.get(CV_CAP_PROP_FRAME_HEIGHT);
 
-	Mat eye_tpl;
-	Rect eye_bb;
 	namedWindow(main_wnd_name, 1);
+	
 
 	double ticks = 0;
-	leftEye.setFound(false);
-	leftEye.resetNotFoundCount();
-	rightEye.setFound(false);
-	rightEye.resetNotFoundCount();
 
 	while (true) {
 		int c = waitKey(10);
@@ -92,6 +76,12 @@ int main(int argc, char** argv) {
 			break;
 		case 's':
 			showDetectedLines = !showDetectedLines;
+			if (showDetectedLines) {
+				printf("Show detected lines\n");
+			}
+			else {
+				printf("Hide detected lines\n");
+			}
 			break;
 		case 'r':
 			recCam = !recCam;
@@ -114,7 +104,6 @@ int main(int argc, char** argv) {
 		}
 
 		// Start time
-		//time(&start);
 		elapsed_tick = (double) getTickCount();	//per calcolo fps
 		
 		//calcolo dt
@@ -122,7 +111,6 @@ int main(int argc, char** argv) {
 		ticks = (double)cv::getTickCount();
 		
 		double dT = (ticks - precTick) / freq; //seconds
-
 		cap >> frame;
 		if (frame.empty())
 			break;
@@ -159,7 +147,7 @@ int main(int argc, char** argv) {
 	return 0;
 }
 
-void detectFace(cv::Mat frame) {
+void detectFace(Mat frame) {
 	// Convert to grayscale and 
 	// adjust the image contrast using histogram equalization
 	Mat gray;
@@ -174,49 +162,35 @@ void detectFace(cv::Mat frame) {
 	//face_cascade.detectMultiScale(gray, faces, 1.3, 5);
 	//face_cascade.detectMultiScale(gray, faces, 1.1, 3, CV_HAAR_FIND_BIGGEST_OBJECT, Size(100, 100), Size(200, 200));
 	
-	face_cascade.detectMultiScale(gray, faces, 1.1, 10,
-	CV_HAAR_SCALE_IMAGE | CV_HAAR_DO_CANNY_PRUNING
-	, cvSize(100, 100), cvSize(300, 300));
+	face_cascade.detectMultiScale(gray, faces, 1.1, 3,
+		//CV_HAAR_SCALE_IMAGE | CV_HAAR_DO_CANNY_PRUNING
+		0 | CV_HAAR_SCALE_IMAGE | CV_HAAR_FIND_BIGGEST_OBJECT
+		//min size
+		, cvSize(100, 100)
+		//max size
+		//, cvSize(300, 300)
+	);
 	
 	//Problema se più facce
 	//caso semplice: 1 sola faccia
 	// Draw rect on the detected faces
 	for (int i = 0; i < faces.size(); i++) {
+		Rect face = faces[i];
+		//Riduco la sezione della faccia a solo quella di mio interesse
+		//IDEA: y = y + h*.2	h = h*.3
+		Rect eyeRegion = Rect(face.x, (int)(face.y + face.height*.2), face.width, (int)(face.height*.3));
 		if (showDetectedLines) {
-			rectangle(frame, faces[i], Scalar(0, 255, 0), 2);
+			//rectangle(frame, faces[i], Scalar(0, 255, 0), 2);
+			rectangle(frame, eyeRegion, Scalar(0, 255, 255), 2);
 		}
-		Mat faceROI = gray(faces[i]);
-		//potrei pensare di ridurre faces[i]
-		//invece di dare tutto la faccia, solo la fascia degli occhi
-		//TODO Reduce face region for eye catching
-		//params da paper Roberto Valenti
-		//eye centers are always contained within 2 regions starting from
-		//20%x30% (left eye), and 60%x30% (right eye) of the face region
-		//with dimensions of 25%x20% of the latter
-		//Give only half face to cascade
-		Rect halfFace(faces[i].x, faces[i].y, faces[i].width, faces[i].height/2);
-		Mat halfFaceROI = gray(halfFace);
+		Mat faceROI = gray(eyeRegion);
+		
 		//here kalman's magic
 		//eye_cascade
-		leftEyecascade.detectMultiScale(faceROI, leye, 1.1, 5
+		eye_cascade.detectMultiScale(faceROI, eyes, 1.1, 5
 			, 0 | CV_HAAR_SCALE_IMAGE | CV_HAAR_DO_CANNY_PRUNING
 			, cvSize(10, 10), cvSize(100, 100));
-		for (int j = 0; j < leye.size(); j++) {
-			//effettuo traslazione dei punti per disagnare su frame
-			Rect eye(faces[i].x + leye[j].x, faces[i].y + leye[j].y, leye[j].width, leye[j].height);
-			rectangle(frame, eye, Scalar(255, 255, 0), 1);
-		}
-		rightEyecascade.detectMultiScale(faceROI, reye, 1.1, 5
-			, 0 | CV_HAAR_SCALE_IMAGE | CV_HAAR_DO_CANNY_PRUNING
-			, cvSize(10, 10), cvSize(100, 100));
-		for (int j = 0; j < eyes.size(); j++) {
-			//effettuo traslazione dei punti per disagnare su frame
-			Rect eye(faces[i].x + reye[j].x, faces[i].y + reye[j].y, reye[j].width, reye[j].height);
-			rectangle(frame, eye, Scalar(255, 255, 0), 1);
-		}
-		eye_cascade.detectMultiScale(halfFaceROI, eyes, 1.1, 5
-			, 0 | CV_HAAR_SCALE_IMAGE | CV_HAAR_DO_CANNY_PRUNING
-			, cvSize(10, 10), cvSize(100, 100));
+
 		//>>>>>>>> Detection
 		switch (eyes.size()){
 		case 0:
@@ -228,15 +202,16 @@ void detectFace(cv::Mat frame) {
 			if (eyes[0].x < faces[i].width / 2) {
 				//sx
 				//draw left eye
-				Rect eye(faces[i].x + eyes[0].x, faces[i].y + eyes[0].y, eyes[0].width, eyes[0].height);
+				Rect eye(eyeRegion.x + eyes[0].x, eyeRegion.y + eyes[0].y, eyes[0].width, eyes[0].height);
 				if (showDetectedLines) {
 					rectangle(frame, eye, Scalar(0, 255, 0), 2);
 				}
 				leftEye.setMeas(eye);
 				rightEye.incNotFound();
+
 			} else {
 				//draw right eye
-				Rect eye(faces[i].x + eyes[0].x, faces[i].y + eyes[0].y, eyes[0].width, eyes[0].height);
+				Rect eye(eyeRegion.x + eyes[0].x, eyeRegion.y + eyes[0].y, eyes[0].width, eyes[0].height);
 				if (showDetectedLines) {
 					rectangle(frame, eye, Scalar(0, 255, 0), 2);
 				}
@@ -244,24 +219,30 @@ void detectFace(cv::Mat frame) {
 				leftEye.incNotFound();
 				}
 			break;
-		case 2:
+		default:
+			//caso 2 = caso >2, se occhi più di due discrimino up,down e sx,dx
 			for (int j = 0; j < eyes.size(); j++) {
 				//sx o dx?
-				if (eyes[j].x < faces[i].width / 2) {
+				/*if (eyes[j].y > (faces[i].height * 0.6 )) {
+					continue;
+				}*/
+				if (eyes[j].x < eyeRegion.width / 2) {
 					//sx
 					leftEye.resetNotFoundCount();
 					//draw left eye
-					Rect eye(faces[i].x + eyes[j].x, faces[i].y + eyes[j].y, eyes[j].width, eyes[j].height);
+					Rect eye(eyeRegion.x + eyes[j].x, eyeRegion.y + eyes[j].y, eyes[j].width, eyes[j].height);
 					if (showDetectedLines) {
 						rectangle(frame, eye, Scalar(0, 255, 0), 2);
 					}
 					leftEye.setMeas(eye);
+					Mat leye = gray(eye);
 					
+					Point leftPupil = findEyeCenter(leye, eye);
 				}
 				else {
 					rightEye.resetNotFoundCount();
 					//draw right eye
-					Rect eye(faces[i].x + eyes[j].x, faces[i].y + eyes[j].y, eyes[j].width, eyes[j].height);
+					Rect eye(eyeRegion.x + eyes[j].x, eyeRegion.y + eyes[j].y, eyes[j].width, eyes[j].height);
 					if (showDetectedLines) {
 						rectangle(frame, eye, Scalar(0, 255, 0), 2);
 					}
@@ -270,18 +251,9 @@ void detectFace(cv::Mat frame) {
 				}
 			}
 			break;
-		default:
-			//TODO gestire più occhi??? 
-			break;
 		}
-		
-		/*
-		for (int j = 0; j < eyes.size(); j++) {
-			//effettuo traslazione dei punti per disagnare su frame
-			Rect eye(faces[i].x + eyes[j].x, faces[i].y + eyes[j].y, eyes[j].width, eyes[j].height);
-			rectangle(frame, eye, Scalar(255, 0, 0), 1);
-		}*/
 		//<<<<<<<< Detection
+
 	}
 }
 

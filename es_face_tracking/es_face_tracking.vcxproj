@@ -166,12 +166,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="eye_op.cpp" />
+    <ClCompile Include="kf_est.cpp" />
     <ClCompile Include="kp_eye.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="constants.h" />
+    <ClInclude Include="eye_op.h" />
     <ClInclude Include="kf_eye.h" />
+    <ClInclude Include="kf_est.h" />
     <ClInclude Include="utils.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>

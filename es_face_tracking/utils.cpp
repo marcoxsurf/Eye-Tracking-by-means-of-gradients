@@ -17,3 +17,10 @@ Mat	addFPStoFrame(Mat frame, double elapsed_time) {
 	putText(frame, fps, org, FONT_HERSHEY_COMPLEX, 1, Scalar(255, 0, 0), 3, lineType);
 	return frame;
 }
+
+double computeDynamicThreshold(const Mat &mat, double stdDevFactor) {
+	Scalar stdMagnGrad, meanMagnGrad;
+	meanStdDev(mat, meanMagnGrad, stdMagnGrad);
+	double stdDev = stdMagnGrad[0] / sqrt(mat.rows*mat.cols);
+	return stdDevFactor * stdDev + meanMagnGrad[0];
+}

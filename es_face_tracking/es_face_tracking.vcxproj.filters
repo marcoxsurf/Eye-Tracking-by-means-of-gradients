@@ -24,6 +24,12 @@
     <ClCompile Include="kp_eye.cpp">
       <Filter>File di origine</Filter>
     </ClCompile>
+    <ClCompile Include="eye_op.cpp">
+      <Filter>File di origine</Filter>
+    </ClCompile>
+    <ClCompile Include="kf_est.cpp">
+      <Filter>File di origine</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">
@@ -33,6 +39,15 @@
       <Filter>File di origine</Filter>
     </ClInclude>
     <ClInclude Include="kf_eye.h">
+      <Filter>File di origine</Filter>
+    </ClInclude>
+    <ClInclude Include="eye_op.h">
+      <Filter>File di origine</Filter>
+    </ClInclude>
+    <ClInclude Include="constants.h">
+      <Filter>File di origine</Filter>
+    </ClInclude>
+    <ClInclude Include="kf_est.h">
       <Filter>File di origine</Filter>
     </ClInclude>
   </ItemGroup>
