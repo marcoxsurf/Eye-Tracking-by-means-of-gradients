@@ -23,7 +23,7 @@ void detectFace(Mat frame);
 //TODO Sostituire KF con UKF per via del modello nonlineare dell'occhio
 KFE leftEye, rightEye;
 
-bool showDetectedLines, recCam, findEye;
+bool showDetectedLines, showKalmanLines, recCam, findEye;
 int frame_width, frame_height;
 VideoWriter video;
 
@@ -35,6 +35,8 @@ int main(int argc, char** argv) {
 	rightEye = KFE();
 
 	showDetectedLines = true;
+	showKalmanLines = true;
+
 	recCam = false;
 	findEye = false;
 
@@ -76,7 +78,7 @@ int main(int argc, char** argv) {
 		case 'f':
 			imwrite("frame.png", frame);
 			break;
-		case 's':
+		case 'd':
 			showDetectedLines = !showDetectedLines;
 			if (showDetectedLines) {
 				printf("Show detected lines\n");
@@ -85,6 +87,16 @@ int main(int argc, char** argv) {
 				printf("Hide detected lines\n");
 			}
 			break;
+		case 'k':
+			showKalmanLines = !showKalmanLines;
+			if (showKalmanLines) {
+				printf("Show Kalman lines\n");
+			}
+			else {
+				printf("Hide Kalman lines\n");
+			}
+			break;
+
 		case 'r':
 			recCam = !recCam;
 			if (recCam) {
@@ -109,11 +121,13 @@ int main(int argc, char** argv) {
 			break;
 		case 'h':
 			printf("Tasti implementati: \n");
-			printf("q - Exit\n");
+			printf("q - Exit\n\n");
+			printf("d - Show/Hide detected lines\n");
 			printf("e - Attiva calcolo centro occhio\n");
 			printf("f - Print frame\n");
+			printf("k - Show/Hide kalman lines\n");
 			printf("r - Start/Stop record main frame\n");
-			printf("s - Show/Hide detected lines\n");
+			
 			break;
 		}
 
@@ -141,40 +155,49 @@ int main(int argc, char** argv) {
 		if (leftEye.getFound()) {
 			leftEye.setDT(dT);
 			Rect le = leftEye.getPredRect();
-			circle(frame, leftEye.getCenter(), 2, CV_RGB(255, 0, 0), 1); //?-1
-			rectangle(frame, le, CV_RGB(255, 0, 0), 2);
-			/*if (findEye) {
+			if (showKalmanLines) {
+				circle(frame, leftEye.getCenter(), 2, CV_RGB(255, 0, 0), -1); //?-1
+				rectangle(frame, le, CV_RGB(255, 0, 0), 2);
+			}
+			if (findEye) {
 				if (le.width > 0 && le.height > 0) {
 					Point leftPupil = findEyeCenter(gray, le);
+					leftPupil.x += le.x;
+					leftPupil.y += le.y;
+					circle(frame, leftPupil, 3, 1234);
 				}
-			}*/
+			}
 			
 		}
 		if (rightEye.getFound()) {
 			rightEye.setDT(dT);
 			Rect re = rightEye.getPredRect();
-			circle(frame, rightEye.getCenter(), 2, CV_RGB(255, 0, 0), 1); //?-1
-			rectangle(frame, re, CV_RGB(255, 0, 0), 2);
+			if (showKalmanLines) {
+				circle(frame, rightEye.getCenter(), 2, CV_RGB(255, 0, 0), -1); //?-1
+				rectangle(frame, re, CV_RGB(255, 0, 0), 2);
+			}
 			if (findEye) {
 				if (re.width > 0 && re.height > 0) {
-					Point rightPupil = findEyeCenter(gray, re);	//riferito all'occhio
-					cv::Rect rightLeftCornerRegion(re);
+					Point rightPupil = findEyeCenter(gray, re);
+					
+					Rect rightLeftCornerRegion(re);
 					rightLeftCornerRegion.width = rightPupil.x;
 					rightLeftCornerRegion.height /= 2;
 					rightLeftCornerRegion.y += rightLeftCornerRegion.height / 2;
-					cv::Rect rightRightCornerRegion(re);
+					
+					Rect rightRightCornerRegion(re);
 					rightRightCornerRegion.width -= rightPupil.x;
 					rightRightCornerRegion.x += rightPupil.x;
 					rightRightCornerRegion.height /= 2;
 					rightRightCornerRegion.y += rightRightCornerRegion.height / 2;
-					rectangle(frame, rightLeftCornerRegion, 200);
-					rectangle(frame, rightRightCornerRegion, 200);
+					//rectangle(frame, rightLeftCornerRegion, 200);
+					//rectangle(frame, rightRightCornerRegion, 200);
+
 					rightPupil.x += re.x;
 					rightPupil.y += re.y;
 					circle(frame, rightPupil, 3, 1234);
 				}
 			}
-			//Point rightPupil = findEyeCenter(frame, rightEye.getPredRect());
 		}
 
 		detectFace(gray);
