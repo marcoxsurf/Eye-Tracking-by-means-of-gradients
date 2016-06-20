@@ -6,6 +6,7 @@
 #include "kf_est.h"
 #include "utils.h"
 #include "eye_op.h"
+#include "constants.h"
 
 using namespace cv;
 using namespace std;
@@ -22,7 +23,7 @@ void detectFace(Mat frame);
 //TODO Sostituire KF con UKF per via del modello nonlineare dell'occhio
 KFE leftEye, rightEye;
 
-bool showDetectedLines, recCam;
+bool showDetectedLines, recCam, findEye;
 int frame_width, frame_height;
 VideoWriter video;
 
@@ -35,6 +36,7 @@ int main(int argc, char** argv) {
 
 	showDetectedLines = true;
 	recCam = false;
+	findEye = false;
 
 	double elapsed_time, elapsed_tick;
 	double freq=getTickFrequency();
@@ -101,6 +103,18 @@ int main(int argc, char** argv) {
 				printf("Rec OFF\n");
 			}
 			break;
+		case 'e':
+			findEye = !findEye;
+			printf("Find eye: %d\n",findEye);
+			break;
+		case 'h':
+			printf("Tasti implementati: \n");
+			printf("q - Exit\n");
+			printf("e - Attiva calcolo centro occhio\n");
+			printf("f - Print frame\n");
+			printf("r - Start/Stop record main frame\n");
+			printf("s - Show/Hide detected lines\n");
+			break;
 		}
 
 		// Start time
@@ -116,27 +130,54 @@ int main(int argc, char** argv) {
 			break;
 		// Flip the frame horizontally, Windows users might need this
 		flip(frame, frame, 1);
+		GaussianBlur(frame, frame, Size(3, 3), 0, 0, BORDER_DEFAULT);
 		Mat gray;
-
 		cvtColor(frame, gray, CV_BGR2GRAY);
 		equalizeHist(gray, gray);
+		
+		//imshow("gray", gray);
+
 		//TODO controllo se box predetto è fuori frame 
 		if (leftEye.getFound()) {
 			leftEye.setDT(dT);
 			Rect le = leftEye.getPredRect();
 			circle(frame, leftEye.getCenter(), 2, CV_RGB(255, 0, 0), 1); //?-1
 			rectangle(frame, le, CV_RGB(255, 0, 0), 2);
-			if (le.width>0 && le.height>0 )
-				Point leftPupil = findEyeCenter(gray, leftEye.getPredRect());
+			/*if (findEye) {
+				if (le.width > 0 && le.height > 0) {
+					Point leftPupil = findEyeCenter(gray, le);
+				}
+			}*/
+			
 		}
 		if (rightEye.getFound()) {
 			rightEye.setDT(dT);
+			Rect re = rightEye.getPredRect();
 			circle(frame, rightEye.getCenter(), 2, CV_RGB(255, 0, 0), 1); //?-1
-			rectangle(frame, rightEye.getPredRect(), CV_RGB(255, 0, 0), 2);
+			rectangle(frame, re, CV_RGB(255, 0, 0), 2);
+			if (findEye) {
+				if (re.width > 0 && re.height > 0) {
+					Point rightPupil = findEyeCenter(gray, re);	//riferito all'occhio
+					cv::Rect rightLeftCornerRegion(re);
+					rightLeftCornerRegion.width = rightPupil.x;
+					rightLeftCornerRegion.height /= 2;
+					rightLeftCornerRegion.y += rightLeftCornerRegion.height / 2;
+					cv::Rect rightRightCornerRegion(re);
+					rightRightCornerRegion.width -= rightPupil.x;
+					rightRightCornerRegion.x += rightPupil.x;
+					rightRightCornerRegion.height /= 2;
+					rightRightCornerRegion.y += rightRightCornerRegion.height / 2;
+					rectangle(frame, rightLeftCornerRegion, 200);
+					rectangle(frame, rightRightCornerRegion, 200);
+					rightPupil.x += re.x;
+					rightPupil.y += re.y;
+					circle(frame, rightPupil, 3, 1234);
+				}
+			}
 			//Point rightPupil = findEyeCenter(frame, rightEye.getPredRect());
 		}
 
-		detectFace(frame);
+		detectFace(gray);
 		
 		//Calcolo tempo per un frame
 		// End Time
@@ -170,7 +211,7 @@ void detectFace(Mat gray) {
 		//CV_HAAR_SCALE_IMAGE | CV_HAAR_DO_CANNY_PRUNING
 		0 | CV_HAAR_SCALE_IMAGE | CV_HAAR_FIND_BIGGEST_OBJECT
 		//min size
-		, cvSize(100, 100)
+		, cvSize(150, 150)
 		//max size
 		//, cvSize(300, 300)
 	);
@@ -180,21 +221,24 @@ void detectFace(Mat gray) {
 	// Draw rect on the detected faces
 	for (int i = 0; i < faces.size(); i++) {
 		Rect face = faces[i];
-		//Riduco la sezione della faccia a solo quella di mio interesse
+		//Riduco la sezione della faccia agli occhi
 		//IDEA: y = y + h*.2	h = h*.3
 		Rect eyeRegion = Rect(face.x, (int)(face.y + face.height*.2), face.width, (int)(face.height*.3));
 		if (showDetectedLines) {
-			//rectangle(frame, faces[i], Scalar(0, 255, 0), 2);
 			rectangle(frame, eyeRegion, Scalar(0, 255, 255), 2);
 		}
 		Mat faceROI = gray(eyeRegion);
 		
-		//here kalman's magic
 		//eye_cascade
 		eye_cascade.detectMultiScale(faceROI, eyes, 1.1, 5
 			, 0 | CV_HAAR_SCALE_IMAGE | CV_HAAR_DO_CANNY_PRUNING
-			, cvSize(10, 10), cvSize(100, 100));
-
+			, cvSize(10, 10)
+			, cvSize(80, 80)
+		);
+		//cascade può fornire più finestre per lo stesso occchio
+		//TODO somma di aeree continue
+		//Ora seleziono solo la prima area trovata per occhio
+		//here kalman's magic
 		//>>>>>>>> Detection
 		switch (eyes.size()){
 		case 0:
@@ -203,7 +247,7 @@ void detectFace(Mat gray) {
 			break;
 		case 1:
 			//sx o dx?
-			if (eyes[0].x < faces[i].width / 2) {
+			if (eyes[0].x < eyeRegion.width / 2) {
 				//sx
 				//draw left eye
 				Rect eye(eyeRegion.x + eyes[0].x, eyeRegion.y + eyes[0].y, eyes[0].width, eyes[0].height);
@@ -225,13 +269,15 @@ void detectFace(Mat gray) {
 			break;
 		default:
 			//caso 2 = caso >2, se occhi più di due discrimino up,down e sx,dx
+			bool foundR = false, foundL = false;
 			for (int j = 0; j < eyes.size(); j++) {
 				//sx o dx?
 				/*if (eyes[j].y > (faces[i].height * 0.6 )) {
 					continue;
 				}*/
-				if (eyes[j].x < eyeRegion.width / 2) {
+				if (!foundL && eyes[j].x < eyeRegion.width / 2) {
 					//sx
+					foundL = true;
 					leftEye.resetNotFoundCount();
 					//draw left eye
 					Rect eye(eyeRegion.x + eyes[j].x, eyeRegion.y + eyes[j].y, eyes[j].width, eyes[j].height);
@@ -240,7 +286,9 @@ void detectFace(Mat gray) {
 					}
 					leftEye.setMeas(eye);
 				}
-				else {
+				if (!foundR && eyes[j].x > eyeRegion.width / 2) {
+					//dx
+					foundR = true;
 					rightEye.resetNotFoundCount();
 					//draw right eye
 					Rect eye(eyeRegion.x + eyes[j].x, eyeRegion.y + eyes[j].y, eyes[j].width, eyes[j].height);

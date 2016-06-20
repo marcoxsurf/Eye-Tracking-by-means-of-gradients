@@ -24,3 +24,17 @@ double computeDynamicThreshold(const Mat &mat, double stdDevFactor) {
 	double stdDev = stdMagnGrad[0] / sqrt(mat.rows*mat.cols);
 	return stdDevFactor * stdDev + meanMagnGrad[0];
 }
+
+Mat matrixMagnitude(const Mat &matX, const Mat &matY) {
+	Mat mags(matX.rows, matX.cols, CV_64F);
+	for (int y = 0; y < matX.rows; ++y) {
+		const double *Xr = matX.ptr<double>(y), *Yr = matY.ptr<double>(y);
+		double *Mr = mags.ptr<double>(y);
+		for (int x = 0; x < matX.cols; ++x) {
+			double gX = Xr[x], gY = Yr[x];
+			double magnitude = sqrt((gX * gX) + (gY * gY));
+			Mr[x] = magnitude;
+		}
+	}
+	return mags;
+}

@@ -142,9 +142,10 @@ void KFE::setMeas(Rect rect) {
 		found = true;
 	}
 	else
-		kf.correct(meas); // Kalman Correction
+		// Kalman Correction
+		kf.correct(meas); 
 
-						  //cout << "Measure matrix:" << endl << meas << endl;
+	//cout << "Measure matrix:" << endl << meas << endl;
 }
 
 void KFE::incNotFound() {

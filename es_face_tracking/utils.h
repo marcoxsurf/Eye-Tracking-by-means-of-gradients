@@ -7,3 +7,4 @@ Funzione per aggiungere la stringa FPS: al frame in output
 */
 cv::Mat	addFPStoFrame(cv::Mat frame, double durata);
 double computeDynamicThreshold(const cv::Mat &mat, double stdDevFactor);
+cv::Mat matrixMagnitude(const cv::Mat &matX, const cv::Mat &matY);

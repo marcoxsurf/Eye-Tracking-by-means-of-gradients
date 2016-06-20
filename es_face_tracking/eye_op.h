@@ -5,3 +5,4 @@ using namespace cv;
 Point findEyeCenter(Mat face, Rect eye);
 
 void findCentersFormula(int x, int y, const cv::Mat &weight, double gx, double gy, cv::Mat &out);
+Point unscalePoint(Point p, Rect origSize);
