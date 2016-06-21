@@ -20,6 +20,7 @@ string right_eye = "Right Eye";
 string left_eye = "Left Eye";
 
 void detectFace(Mat frame);
+void printHelp();
 //TODO Sostituire KF con UKF per via del modello nonlineare dell'occhio
 KFE leftEye, rightEye;
 
@@ -64,10 +65,14 @@ int main(int argc, char** argv) {
 	frame_width = (int) cap.get(CV_CAP_PROP_FRAME_WIDTH);
 	frame_height = (int) cap.get(CV_CAP_PROP_FRAME_HEIGHT);
 
+	rightEye.setWH(frame_width, frame_height);
+	leftEye.setWH(frame_width, frame_height);
+
 	namedWindow(main_wnd_name, 1);
-	
+	printHelp();
 
 	double ticks = 0;
+	
 
 	while (true) {
 		int c = waitKey(10);
@@ -120,14 +125,7 @@ int main(int argc, char** argv) {
 			printf("Find eye: %d\n",findEye);
 			break;
 		case 'h':
-			printf("Tasti implementati: \n");
-			printf("q - Exit\n\n");
-			printf("d - Show/Hide detected lines\n");
-			printf("e - Attiva calcolo centro occhio\n");
-			printf("f - Print frame\n");
-			printf("k - Show/Hide kalman lines\n");
-			printf("r - Start/Stop record main frame\n");
-			
+			printHelp();
 			break;
 		}
 
@@ -295,9 +293,6 @@ void detectFace(Mat gray) {
 			bool foundR = false, foundL = false;
 			for (int j = 0; j < eyes.size(); j++) {
 				//sx o dx?
-				/*if (eyes[j].y > (faces[i].height * 0.6 )) {
-					continue;
-				}*/
 				if (!foundL && eyes[j].x < eyeRegion.width / 2) {
 					//sx
 					foundL = true;
@@ -328,3 +323,12 @@ void detectFace(Mat gray) {
 	}
 }
 
+void printHelp() {
+	printf("Tasti implementati: \n");
+	printf("q - Exit\n\n");
+	printf("d - Show/Hide detected lines\n");
+	printf("e - Attiva calcolo centro occhio\n");
+	printf("f - Print frame\n");
+	printf("k - Show/Hide kalman lines\n");
+	printf("r - Start/Stop record main frame\n");
+}

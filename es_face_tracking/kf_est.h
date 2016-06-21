@@ -22,6 +22,8 @@ class KFE {
 	bool found;
 	int notFoundCount;
 
+	int f_width, f_height;
+
 public:
 	KFE();
 	KFE(int _stateSize, int _measSize, int _contrSize, unsigned int _type);
@@ -39,6 +41,8 @@ public:
 
 	bool getFound();
 	void setFound(bool _found);
+
+	void setWH(int width, int height);
 private:
 	void initSMNMatrix();
 	void predict();

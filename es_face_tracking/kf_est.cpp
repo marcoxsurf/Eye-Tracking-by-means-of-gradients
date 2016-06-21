@@ -22,6 +22,8 @@ KFE::KFE() {
 	measSize = 4;
 	contrSize = 0;
 	type = CV_32F;
+	f_width = 640;
+	f_height = 480;
 	setVars();
 }
 
@@ -31,6 +33,11 @@ KFE::KFE(int _stateSize, int _measSize, int _contrSize, unsigned int _type) {
 	contrSize = _contrSize;
 	type = _type;
 	setVars();
+}
+
+void KFE::setWH(int width, int height) {
+	f_width = width;
+	f_height = height;
 }
 
 void KFE::setDT(double dt) {
@@ -122,13 +129,13 @@ void KFE::setMeas(Rect rect) {
 	if (!found) {
 		// First detection!
 		kf.errorCovPre.at<float>(0) = 1; // px
-		kf.errorCovPre.at<float>(9) = 1; // px
+		kf.errorCovPre.at<float>(9) = 1; // py
 		kf.errorCovPre.at<float>(18) = 1;
 		kf.errorCovPre.at<float>(27) = 1;
-		kf.errorCovPre.at<float>(36) = 1; // px
-		kf.errorCovPre.at<float>(45) = 1; // px
-		kf.errorCovPre.at<float>(54) = 1; // px
-		kf.errorCovPre.at<float>(63) = 1; // px
+		kf.errorCovPre.at<float>(36) = 1; 
+		kf.errorCovPre.at<float>(45) = 1; 
+		kf.errorCovPre.at<float>(54) = 1; // pw
+		kf.errorCovPre.at<float>(63) = 1; // ph
 
 		state.at<float>(0) = meas.at<float>(0);
 		state.at<float>(1) = meas.at<float>(1);
@@ -180,8 +187,22 @@ Rect KFE::getPredRect() {
 	Rect predRect;
 	predRect.width = (int)state.at<float>(6);
 	predRect.height = (int)state.at<float>(7);
-	predRect.x = (int)state.at<float>(0) - predRect.width / 2;
-	predRect.y = (int)state.at<float>(1) - predRect.height / 2;
+	//se rettangolo fuori frame ritorno rettangolo centrato
+	if (
+		// x>=0 && y>=0
+		((int)state.at<float>(0) >= 0) && ((int)state.at<float>(1) >= 0) &&
+		// x<=f_height - height 
+		((int)state.at<float>(0) <= f_height - (int)state.at<float>(7)) &&
+		//y<=f_width - width
+		((int)state.at<float>(1) <= f_width - (int)state.at<float>(6))
+		) {
+		predRect.x = (int)state.at<float>(0) - predRect.width / 2;
+		predRect.y = (int)state.at<float>(1) - predRect.height / 2;
+	}
+	else {
+		predRect.x = f_height / 2;
+		predRect.y = f_width / 2;
+	}
 	return predRect;
 }
 
@@ -192,7 +213,5 @@ Point KFE::getCenter() {
 	return center;
 }
 
-KFE::~KFE() {
-
-}
+KFE::~KFE() {}
 

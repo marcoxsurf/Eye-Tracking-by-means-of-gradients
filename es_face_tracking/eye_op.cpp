@@ -1,10 +1,13 @@
+#include <iostream>
 #include <opencv2\opencv.hpp>
+#include <queue>
 
 #include "eye_op.h"
 #include "constants.h"
 #include "utils.h"
 
 using namespace cv;
+using namespace std;
 
 Mat computeMatXGradient(const cv::Mat &mat) {
 	cv::Mat out(mat.rows, mat.cols, CV_64F);
@@ -27,21 +30,18 @@ Point findEyeCenter(Mat face, Rect eye) {
 	Mat mags;
 	//scaleToFastSize(eyeROIUnscaled, eyeROI);
 	resize(eyeROIUnscaled, eyeROI, Size(kFastEyeWidth, kFastEyeWidth));
+	//Eye detection ritorna un box centrato sull'occhio
+	//Posso sfruttare questa info per ridurre l'area in cui cercare
+	//TODO
 	// draw eye region
 	//rectangle(face, eye, 1234);
 	//-- Find the gradient
-	//Sobel(eyeROI, gradientX, CV_64F, 1, 0, 3);
-	//Sobel(eyeROI, gradientY, CV_64F, 0, 1, 3);
 	gradientX = computeMatXGradient(eyeROI);
 	gradientY = computeMatXGradient(eyeROI.t()).t();
-	//Scharr( eyeROI, gradientX, CV_64F, 1, 0, 1, 0, BORDER_DEFAULT );
-	//Scharr( eyeROI, gradientY, CV_64F, 1, 0, 1, 0, BORDER_DEFAULT );
-	//Se Sobel non dovesse funzionare cambiare con questa
-	
 	//-- Normalize and threshold the gradient
 	// compute all the magnitudes
-	//magnitude(gradientX, gradientY, mags);
-	mags = matrixMagnitude(gradientX, gradientY);
+	magnitude(gradientX, gradientY, mags);
+	//mags = matrixMagnitude(gradientX, gradientY);
 	double gradientThresh = computeDynamicThreshold(mags, kGradientThreshold);
 	//normalize
 	//normalize(eyeROI, gradientX, gradientThresh);
@@ -69,23 +69,36 @@ Point findEyeCenter(Mat face, Rect eye) {
 	Mat weight;
 	GaussianBlur(eyeROI, weight, Size(kWeightBlurSize, kWeightBlurSize), 0, 0);
 	weight = 255 - weight;
-	imshow("Eye", weight);
-	//Inizia l'algoritmo
 	
+	/// Convert it to gray
+	//cvtColor(weight, weight, CV_BGR2GRAY);
+	/// Reduce the noise so we avoid false circle detection
+	/*
+	GaussianBlur(weight, weight, Size(9, 9), 2, 2);
+	
+	vector<Vec3f> circles;
+	HoughCircles(weight, circles, CV_HOUGH_GRADIENT, 1, weight.rows / 8, 200, 100, 0, 0);
+	*/
+	//imshow("Eye", weight);
+	//Inizia l'algoritmo
 	Mat outSum = Mat::zeros(eyeROI.rows, eyeROI.cols, CV_64F);
 	// for each possible gradient location
 	// Note: these loops are reversed from the way the paper does them
 	// it evaluates every possible center for each gradient location instead of
 	// every possible gradient location for every center.
 	//printf("Eye Size: %ix%i\n", outSum.cols, outSum.rows);
-	for (int y = 0; y < weight.rows; ++y) {
+	//for (int y = 0; y < weight.rows; ++y) {
+	for (int y = (int)(kFastEyeWidth / 2 - radiusEye); y < (int)(kFastEyeWidth / 2 + radiusEye); ++y) {
 		const double *Xr = gradientX.ptr<double>(y), *Yr = gradientY.ptr<double>(y);
-		for (int x = 0; x < weight.cols; ++x) {
+		for (int x = (int)(kFastEyeWidth / 2 - radiusEye); x < (int)(kFastEyeWidth / 2 + radiusEye); ++x) {
 			double gX = Xr[x], gY = Yr[x];
 			if (gX == 0.0 && gY == 0.0) {
 				continue;
 			}
-			findCentersFormula(x, y, weight, gX, gY, outSum);
+			//se x,y appartengono alla maschera eseguo 
+			if (isInsideCircle(x, y, kFastEyeWidth/2, kFastEyeWidth / 2, radiusEye)) {
+				findCentersFormula(x, y, weight, gX, gY, outSum);
+			}
 		}
 	}
 	// scale all the values down, basically averaging them
@@ -96,7 +109,57 @@ Point findEyeCenter(Mat face, Rect eye) {
 	Point maxP;
 	double maxVal;
 	minMaxLoc(out, NULL, &maxVal, NULL, &maxP);
+	//cout<<format(out, Formatter::FMT_MATLAB)<<endl;
+	//-- Flood fill the edges
+	Mat floodClone;
+	// remove all remaining values that are connected to one of the borders
+	double floodThresh = maxVal * kPostProcessThreshold;
+	//threshold( src_gray, dst, threshold_value, max_BINARY_value,threshold_type );
+	threshold(out, floodClone, floodThresh, 0.0f, cv::THRESH_TOZERO);
+	Mat mask = floodKillEdges(floodClone);
+	//imshow(debugWindow,out);
+	minMaxLoc(out, NULL, &maxVal, NULL, &maxP, mask);
+	//cout << format(floodClone, Formatter::FMT_MATLAB) << endl;
 	return unscalePoint(maxP, eye);
+}
+
+bool inMat(Point p, int rows, int cols) {
+	return p.x >= 0 && p.x < cols && p.y >= 0 && p.y < rows;
+}
+
+bool floodShouldPushPoint(const Point &np, const Mat &mat) {
+	return inMat(np, mat.rows, mat.cols);
+}
+
+Mat floodKillEdges(Mat &mat) {
+	rectangle(mat, Rect(0, 0, mat.cols, mat.rows), 255);
+	Mat mask(mat.rows, mat.cols, CV_8U, 255);
+	queue<Point> toDo;
+	toDo.push(Point(0, 0));
+	while (!toDo.empty()) {
+		Point p = toDo.front();
+		toDo.pop();
+		if (mat.at<float>(p) == 0.0f) {
+			continue;
+		}
+		// add in every direction
+		Point np(p.x + 1, p.y); // right
+		if (floodShouldPushPoint(np, mat)) 
+			toDo.push(np);
+		np.x = p.x - 1; np.y = p.y; // left
+		if (floodShouldPushPoint(np, mat)) 
+			toDo.push(np);
+		np.x = p.x; np.y = p.y + 1; // down
+		if (floodShouldPushPoint(np, mat)) 
+			toDo.push(np);
+		np.x = p.x; np.y = p.y - 1; // up
+		if (floodShouldPushPoint(np, mat)) 
+			toDo.push(np);
+		// kill it
+		mat.at<float>(p) = 0.0f;
+		mask.at<uchar>(p) = 0;
+	}
+	return mask;
 }
 
 void findCentersFormula(int x, int y, const Mat &weight, double gx, double gy, Mat &out) {
@@ -106,6 +169,9 @@ void findCentersFormula(int x, int y, const Mat &weight, double gx, double gy, M
 		const unsigned char *Wr = weight.ptr<unsigned char>(cy);
 		for (int cx = 0; cx < out.cols; ++cx) {
 			if (x == cx && y == cy) {
+				continue;
+			}
+			if (!isInsideCircle(cx, cy, kFastEyeWidth / 2, kFastEyeWidth / 2, radiusEye)) {
 				continue;
 			}
 			// create a vector from the possible center to the gradient origin
@@ -125,7 +191,11 @@ void findCentersFormula(int x, int y, const Mat &weight, double gx, double gy, M
 
 Point unscalePoint(Point p, Rect origSize) {
 	float ratio = (((float)kFastEyeWidth) / origSize.width);
-	int x = round(p.x / ratio);
-	int y = round(p.y / ratio);
+	int x = (int)round(p.x / ratio);
+	int y = (int)round(p.y / ratio);
 	return Point(x, y);
+}
+
+bool isInsideCircle(int x, int y, int cx, int cy, int r) {
+	return ((x - cx)*(x - cx) + (y - cy)*(y - cy)) <= r*r;
 }
