@@ -24,10 +24,13 @@
     <ClCompile Include="kp_eye.cpp">
       <Filter>File di origine</Filter>
     </ClCompile>
-    <ClCompile Include="eye_op.cpp">
+    <ClCompile Include="kf_est.cpp">
       <Filter>File di origine</Filter>
     </ClCompile>
-    <ClCompile Include="kf_est.cpp">
+    <ClCompile Include="eye_center.cpp">
+      <Filter>File di origine</Filter>
+    </ClCompile>
+    <ClCompile Include="eye_corner.cpp">
       <Filter>File di origine</Filter>
     </ClCompile>
   </ItemGroup>
@@ -41,13 +44,16 @@
     <ClInclude Include="kf_eye.h">
       <Filter>File di origine</Filter>
     </ClInclude>
-    <ClInclude Include="eye_op.h">
-      <Filter>File di origine</Filter>
-    </ClInclude>
     <ClInclude Include="constants.h">
       <Filter>File di origine</Filter>
     </ClInclude>
     <ClInclude Include="kf_est.h">
+      <Filter>File di origine</Filter>
+    </ClInclude>
+    <ClInclude Include="eye_center.h">
+      <Filter>File di origine</Filter>
+    </ClInclude>
+    <ClInclude Include="eye_corner.h">
       <Filter>File di origine</Filter>
     </ClInclude>
   </ItemGroup>

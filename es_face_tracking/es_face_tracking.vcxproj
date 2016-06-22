@@ -166,7 +166,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="eye_op.cpp" />
+    <ClCompile Include="eye_center.cpp" />
+    <ClCompile Include="eye_corner.cpp" />
     <ClCompile Include="kf_est.cpp" />
     <ClCompile Include="kp_eye.cpp" />
     <ClCompile Include="Main.cpp" />
@@ -174,7 +175,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="constants.h" />
-    <ClInclude Include="eye_op.h" />
+    <ClInclude Include="eye_center.h" />
+    <ClInclude Include="eye_corner.h" />
     <ClInclude Include="kf_eye.h" />
     <ClInclude Include="kf_est.h" />
     <ClInclude Include="utils.h" />

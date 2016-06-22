@@ -5,7 +5,8 @@
 
 #include "kf_est.h"
 #include "utils.h"
-#include "eye_op.h"
+#include "eye_center.h"
+#include "eye_corner.h"
 #include "constants.h"
 
 using namespace cv;
@@ -23,8 +24,9 @@ void detectFace(Mat frame);
 void printHelp();
 //TODO Sostituire KF con UKF per via del modello nonlineare dell'occhio
 KFE leftEye, rightEye;
+Point leftPupil, rightPupil;
 
-bool showDetectedLines, showKalmanLines, recCam, findEye;
+bool showDetectedLines, showKalmanLines, recCam, findEyeC;
 int frame_width, frame_height;
 VideoWriter video;
 
@@ -39,7 +41,7 @@ int main(int argc, char** argv) {
 	showKalmanLines = true;
 
 	recCam = false;
-	findEye = false;
+	findEyeC = false;
 
 	double elapsed_time, elapsed_tick;
 	double freq=getTickFrequency();
@@ -121,8 +123,8 @@ int main(int argc, char** argv) {
 			}
 			break;
 		case 'e':
-			findEye = !findEye;
-			printf("Find eye: %d\n",findEye);
+			findEyeC = !findEyeC;
+			printf("Find eye: %d\n",findEyeC);
 			break;
 		case 'h':
 			printHelp();
@@ -146,60 +148,65 @@ int main(int argc, char** argv) {
 		Mat gray;
 		cvtColor(frame, gray, CV_BGR2GRAY);
 		equalizeHist(gray, gray);
-		
 		//imshow("gray", gray);
-
 		//TODO controllo se box predetto è fuori frame 
 		if (leftEye.getFound()) {
 			leftEye.setDT(dT);
 			Rect le = leftEye.getPredRect();
 			if (showKalmanLines) {
-				circle(frame, leftEye.getCenter(), 2, CV_RGB(255, 0, 0), -1); //?-1
+				circle(frame, leftEye.getCenter(), 2, CV_RGB(255, 0, 0), -1);
 				rectangle(frame, le, CV_RGB(255, 0, 0), 2);
 			}
-			if (findEye) {
+			if (findEyeC) {
 				if (le.width > 0 && le.height > 0) {
-					Point leftPupil = findEyeCenter(gray, le);
+					leftPupil = findEyeCenter(gray, le);
 					leftPupil.x += le.x;
 					leftPupil.y += le.y;
-					circle(frame, leftPupil, 3, 1234);
+					circle(frame, leftPupil, 3, CV_RGB(0, 0, 255));
 				}
 			}
-			
 		}
 		if (rightEye.getFound()) {
 			rightEye.setDT(dT);
 			Rect re = rightEye.getPredRect();
 			if (showKalmanLines) {
-				circle(frame, rightEye.getCenter(), 2, CV_RGB(255, 0, 0), -1); //?-1
+				circle(frame, rightEye.getCenter(), 2, CV_RGB(255, 0, 0), -1);
 				rectangle(frame, re, CV_RGB(255, 0, 0), 2);
 			}
-			if (findEye) {
+			if (findEyeC) {
 				if (re.width > 0 && re.height > 0) {
-					Point rightPupil = findEyeCenter(gray, re);
-					
-					Rect rightLeftCornerRegion(re);
-					rightLeftCornerRegion.width = rightPupil.x;
-					rightLeftCornerRegion.height /= 2;
-					rightLeftCornerRegion.y += rightLeftCornerRegion.height / 2;
-					
-					Rect rightRightCornerRegion(re);
-					rightRightCornerRegion.width -= rightPupil.x;
-					rightRightCornerRegion.x += rightPupil.x;
-					rightRightCornerRegion.height /= 2;
-					rightRightCornerRegion.y += rightRightCornerRegion.height / 2;
-					//rectangle(frame, rightLeftCornerRegion, 200);
-					//rectangle(frame, rightRightCornerRegion, 200);
-
+					rightPupil = findEyeCenter(gray, re);
 					rightPupil.x += re.x;
 					rightPupil.y += re.y;
-					circle(frame, rightPupil, 3, 1234);
+					circle(frame, rightPupil, 2, CV_RGB(0, 0, 255));
 				}
 			}
 		}
+		if (findEyeC && leftEye.getFound() && rightEye.getFound()) {
+			//devo creare le 4 aree intorno al eye corner per essere rilevate
+			// da un filtro Gabor
+			int a = rightPupil.x - leftPupil.x; //dist tra occhi
+			//secondo http://stackoverflow.com/questions/9645871/how-to-perform-stable-eye-corner-detection
+			//b = larghezza dell'occhio, è proporzionale ad a
+			//c = altezza occhio, è proporzionale ad a
+			//mie misure, a = 4cm, b=1.73->2cm, c=0.8->1cm
+			double k_b = 1.8;
+			double k_c = 4.0;
+			int b = (int)(a / k_b);
+			int c = (int)(a / k_c);
 
+			Rect r1, r2, r3, r4;
+			r1 = Rect(leftPupil.x - b / 2, leftPupil.y - c/2, b/2, c);
+			r2 = Rect(leftPupil.x, leftPupil.y -c/2 , b/2, c);
+			r3 = Rect(rightPupil.x - b / 2, rightPupil.y - c/2, b/2, c);
+			r4 = Rect(rightPupil.x, rightPupil.y -c/2, b/2, c);
+			rectangle(frame, r1, CV_RGB(180, 180, 0), 1);
+			rectangle(frame, r2, CV_RGB(180, 180, 0), 1);
+			rectangle(frame, r3, CV_RGB(180, 180, 0), 1);
+			rectangle(frame, r4, CV_RGB(180, 180, 0), 1);
+			//ora ho le regioni per andare a trovare i corner dell'occhio
+		}
 		detectFace(gray);
-		
 		//Calcolo tempo per un frame
 		// End Time
 		elapsed_tick = getTickCount() - elapsed_tick;

@@ -2,7 +2,7 @@
 #include <opencv2\opencv.hpp>
 #include <queue>
 
-#include "eye_op.h"
+#include "eye_center.h"
 #include "constants.h"
 #include "utils.h"
 
@@ -32,9 +32,6 @@ Point findEyeCenter(Mat face, Rect eye) {
 	resize(eyeROIUnscaled, eyeROI, Size(kFastEyeWidth, kFastEyeWidth));
 	//Eye detection ritorna un box centrato sull'occhio
 	//Posso sfruttare questa info per ridurre l'area in cui cercare
-	//TODO
-	// draw eye region
-	//rectangle(face, eye, 1234);
 	//-- Find the gradient
 	gradientX = computeMatXGradient(eyeROI);
 	gradientY = computeMatXGradient(eyeROI.t()).t();
@@ -44,8 +41,6 @@ Point findEyeCenter(Mat face, Rect eye) {
 	//mags = matrixMagnitude(gradientX, gradientY);
 	double gradientThresh = computeDynamicThreshold(mags, kGradientThreshold);
 	//normalize
-	//normalize(eyeROI, gradientX, gradientThresh);
-	//normalize(eyeROI, gradientY, gradientThresh);
 	for (int y = 0; y < eyeROI.rows; ++y) {
 		double *Xr = gradientX.ptr<double>(y), *Yr = gradientY.ptr<double>(y);
 		const double *Mr = mags.ptr<double>(y);
@@ -69,24 +64,14 @@ Point findEyeCenter(Mat face, Rect eye) {
 	Mat weight;
 	GaussianBlur(eyeROI, weight, Size(kWeightBlurSize, kWeightBlurSize), 0, 0);
 	weight = 255 - weight;
-	
-	/// Convert it to gray
-	//cvtColor(weight, weight, CV_BGR2GRAY);
-	/// Reduce the noise so we avoid false circle detection
-	/*
-	GaussianBlur(weight, weight, Size(9, 9), 2, 2);
-	
-	vector<Vec3f> circles;
-	HoughCircles(weight, circles, CV_HOUGH_GRADIENT, 1, weight.rows / 8, 200, 100, 0, 0);
-	*/
 	//imshow("Eye", weight);
 	//Inizia l'algoritmo
+	
 	Mat outSum = Mat::zeros(eyeROI.rows, eyeROI.cols, CV_64F);
 	// for each possible gradient location
 	// Note: these loops are reversed from the way the paper does them
 	// it evaluates every possible center for each gradient location instead of
 	// every possible gradient location for every center.
-	//printf("Eye Size: %ix%i\n", outSum.cols, outSum.rows);
 	//for (int y = 0; y < weight.rows; ++y) {
 	for (int y = (int)(kFastEyeWidth / 2 - radiusEye); y < (int)(kFastEyeWidth / 2 + radiusEye); ++y) {
 		const double *Xr = gradientX.ptr<double>(y), *Yr = gradientY.ptr<double>(y);
